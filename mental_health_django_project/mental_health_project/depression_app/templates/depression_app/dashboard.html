@@ -1,0 +1,187 @@
+{% extends 'depression_app/base.html' %}
+{% block title %}Dashboard — MindScan{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="section-title">Overview</div>
+<p class="section-sub">Real-time analytics across all analysed tweets.</p>
+
+<!-- STAT CARDS -->
+<div class="stats-grid">
+  <div class="stat-card blue">
+    <div class="stat-icon">📝</div>
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-label">Total Tweets Analysed</div>
+    <div class="stat-sub">All time</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-icon">⚠️</div>
+    <div class="stat-value">{{ depressive }}</div>
+    <div class="stat-label">Depressive Tweets</div>
+    <div class="stat-sub">{{ dep_pct }}% of total</div>
+    <div class="progress" style="margin-top:10px">
+      <div class="progress-bar red" style="width:{{ dep_pct }}%"></div>
+    </div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ not_depressive }}</div>
+    <div class="stat-label">Not Depressive</div>
+    <div class="stat-sub">{{ not_dep_pct }}% of total</div>
+    <div class="progress" style="margin-top:10px">
+      <div class="progress-bar green" style="width:{{ not_dep_pct }}%"></div>
+    </div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-icon">📂</div>
+    <div class="stat-value">{{ batches }}</div>
+    <div class="stat-label">Batch Uploads</div>
+    <div class="stat-sub">CSV datasets processed</div>
+  </div>
+</div>
+
+<!-- CHARTS ROW -->
+<div class="two-col" style="margin-bottom:24px">
+
+  <!-- Sentiment Donut -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Sentiment Distribution</div>
+    </div>
+    <div class="donut-wrap" id="donutWrap">
+      <svg class="donut-svg" width="120" height="120" viewBox="0 0 42 42" id="donutSvg">
+        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#1e2330" stroke-width="6"/>
+        <circle id="donut-pos" cx="21" cy="21" r="15.915" fill="transparent" stroke="#10b981" stroke-width="6"
+                stroke-dasharray="0 100" stroke-dashoffset="25" style="transition:stroke-dasharray 0.8s ease"/>
+        <circle id="donut-neg" cx="21" cy="21" r="15.915" fill="transparent" stroke="#ef4444" stroke-width="6"
+                stroke-dasharray="0 100" stroke-dashoffset="25" style="transition:stroke-dasharray 0.8s ease"/>
+        <circle id="donut-neu" cx="21" cy="21" r="15.915" fill="transparent" stroke="#6b7280" stroke-width="6"
+                stroke-dasharray="0 100" stroke-dashoffset="25" style="transition:stroke-dasharray 0.8s ease"/>
+        <text x="21" y="24" text-anchor="middle" fill="#e8eaf0" font-size="5" font-family="Syne,sans-serif" font-weight="700" id="donut-center">–</text>
+      </svg>
+      <div class="donut-legend" id="donutLegend">
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div><span id="leg-pos">Positive</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span id="leg-neg">Negative</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div><span id="leg-neu">Neutral</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Quick Actions</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <a href="{% url 'analyse' %}" class="btn btn-primary" style="justify-content:center">
+        🔍 Analyse a Tweet
+      </a>
+      <a href="{% url 'batch_upload' %}" class="btn btn-secondary" style="justify-content:center">
+        📂 Upload CSV Dataset
+      </a>
+      <a href="{% url 'train_model' %}" class="btn btn-secondary" style="justify-content:center">
+        ⚙️ Train / Retrain Model
+      </a>
+      <a href="{% url 'history' %}" class="btn btn-secondary" style="justify-content:center">
+        📋 View Full History
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- RECENT ANALYSES TABLE -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Recent Analyses</div>
+    <a href="{% url 'history' %}" class="btn btn-sm btn-secondary">View All →</a>
+  </div>
+
+  {% if recent %}
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tweet</th>
+          <th>Sentiment</th>
+          <th>Polarity</th>
+          <th>Result</th>
+          <th>Confidence</th>
+          <th>Analysed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in recent %}
+        <tr>
+          <td class="tweet-cell"><span title="{{ a.tweet_text }}">{{ a.tweet_text|truncatechars:80 }}</span></td>
+          <td>
+            {% if a.sentiment_label == 'positive' %}<span style="color:#10b981">▲ Positive</span>
+            {% elif a.sentiment_label == 'negative' %}<span style="color:#ef4444">▼ Negative</span>
+            {% else %}<span style="color:#6b7280">— Neutral</span>{% endif %}
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">{{ a.polarity_score|floatformat:3 }}</td>
+          <td>
+            <span class="result-badge {{ a.result }}">
+              {% if a.is_depressive %}⚠ Depressive{% else %}✓ Not Depressive{% endif %}
+            </span>
+          </td>
+          <td>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+              {% if a.confidence %}{{ a.confidence|floatformat:1 }}%{% else %}—{% endif %}
+            </span>
+          </td>
+          <td style="font-size:0.78rem;color:var(--muted)">{{ a.analyzed_at|timesince }} ago</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h3>No analyses yet</h3>
+    <p>Start by analysing a tweet or uploading a CSV dataset.</p>
+    <a href="{% url 'analyse' %}" class="btn btn-primary">Analyse First Tweet</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const data = {{ sentiment_json|safe }};
+  const total = (data.positive || 0) + (data.negative || 0) + (data.neutral || 0);
+  if (!total) return;
+
+  const posP = (data.positive / total * 100).toFixed(1);
+  const negP = (data.negative / total * 100).toFixed(1);
+  const neuP = (data.neutral  / total * 100).toFixed(1);
+
+  function seg(pct) { return `${pct} ${100 - pct}`; }
+
+  const pos = document.getElementById('donut-pos');
+  const neg = document.getElementById('donut-neg');
+  const neu = document.getElementById('donut-neu');
+  const ctr = document.getElementById('donut-center');
+
+  setTimeout(() => {
+    pos.setAttribute('stroke-dasharray', seg(posP));
+    pos.setAttribute('stroke-dashoffset', 25);
+
+    neg.setAttribute('stroke-dasharray', seg(negP));
+    neg.setAttribute('stroke-dashoffset', 25 - posP);
+
+    neu.setAttribute('stroke-dasharray', seg(neuP));
+    neu.setAttribute('stroke-dashoffset', 25 - posP - negP);
+
+    ctr.textContent = total;
+  }, 300);
+
+  document.getElementById('leg-pos').textContent = `Positive (${posP}%)`;
+  document.getElementById('leg-neg').textContent = `Negative (${negP}%)`;
+  document.getElementById('leg-neu').textContent = `Neutral  (${neuP}%)`;
+})();
+</script>
+{% endblock %}
