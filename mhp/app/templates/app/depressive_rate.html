@@ -1,0 +1,150 @@
+{% extends 'app/base.html' %}
+{% block title %}Depressive Rate — Mind Predictor{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div class="page-header fade-up">
+    <h1>📊 Depressive Rate</h1>
+    <p>In-depth breakdown of depression signals across all your analysed tweets.</p>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="two-col fade-up-1" style="margin-bottom:24px">
+
+    <!-- Sentiment Breakdown Bar Chart -->
+    <div class="card">
+      <div class="card-title">🎭 Sentiment Breakdown</div>
+      {% if total > 0 %}
+      <canvas id="barChart" style="max-height:220px"></canvas>
+      {% else %}
+      <div class="empty"><div class="empty-icon">🎭</div><p>No sentiment data yet.</p></div>
+      {% endif %}
+    </div>
+
+    <!-- Overall Rate -->
+    <div class="card">
+      <div class="card-title">🎯 Overall Depressive Rate</div>
+      {% if total > 0 %}
+      <div style="display:flex;align-items:center;gap:36px;flex-wrap:wrap;padding:8px 0">
+        <div style="text-align:center;min-width:140px">
+          <div style="font-family:'Playfair Display',serif;font-size:72px;font-weight:700;letter-spacing:-0.04em;line-height:1;
+            background:linear-gradient(135deg,{% if dep_pct >= 60 %}var(--red),#ff8fa3{% elif dep_pct >= 30 %}var(--gold),#fde68a{% else %}var(--green),var(--teal){% endif %});
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent">
+            {{ dep_pct }}<span style="font-size:28px">%</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin-top:6px;font-weight:500">Depressive Rate</div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px">
+              <span style="color:var(--red);font-weight:600">⚠ Depressive</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted2)">{{ depressive }} / {{ total }}</span>
+            </div>
+            <div class="bar" style="height:8px"><div class="bar-fill red" style="width:{{ dep_pct }}%"></div></div>
+          </div>
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px">
+              <span style="color:var(--green);font-weight:600">✓ Not Depressive</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted2)">{{ not_depressive }} / {{ total }}</span>
+            </div>
+            <div class="bar" style="height:8px"><div class="bar-fill green" style="width:{{ not_dep_pct }}%"></div></div>
+          </div>
+          <div style="padding:12px 14px;background:var(--surf2);border-radius:10px;border:1px solid var(--border);font-size:12px;line-height:1.6">
+            {% if dep_pct >= 60 %}
+              <span style="color:var(--red);font-weight:700">⚠ High Risk</span> — Most tweets show depressive signals.
+            {% elif dep_pct >= 30 %}
+              <span style="color:var(--gold);font-weight:700">⚡ Moderate</span> — Some depressive patterns detected.
+            {% else %}
+              <span style="color:var(--green);font-weight:700">✓ Low Risk</span> — Mostly positive content. Keep it up!
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty"><div class="empty-icon">🎯</div><p>No data yet.</p></div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- DEPRESSIVE TWEETS TABLE -->
+  <div class="card fade-up-2">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div class="card-title" style="margin-bottom:0">⚠️ Depressive Tweets <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--red)">({{ depressive }})</span></div>
+      <a href="{% url 'dashboard' %}" class="btn btn-outline">+ Analyse More</a>
+    </div>
+    {% if dep_list %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tweet Text</th>
+            <th>Polarity</th>
+            <th>Confidence</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in dep_list %}
+          <tr style="color:var(--text)">
+            <td style="color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:12px">{{ forloop.counter }}</td>
+            <td style="max-width:340px;color:var(--text)">
+              <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5">{{ a.tweet_text }}</span>
+            </td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--red)">{{ a.polarity_score|floatformat:3 }}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--violet2)">{{ a.confidence|floatformat:1 }}%</td>
+            <td style="font-size:12px;color:var(--muted2)">
+              {{ a.analyzed_at|date:"d M Y" }}<br>
+              <span style="font-size:11px">{{ a.analyzed_at|time:"H:i" }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">✅</div>
+      <p>No depressive tweets detected yet. Great start!</p>
+      <a href="{% url 'dashboard' %}" class="btn btn-primary" style="width:auto;display:inline-flex">Analyse a Tweet →</a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+Chart.defaults.color='#8b92b3';
+Chart.defaults.borderColor='rgba(30,37,64,0.6)';
+
+{% if total > 0 %}
+new Chart(document.getElementById('barChart'),{
+  type:'bar',
+  data:{
+    labels:['Positive','Negative','Neutral'],
+    datasets:[{
+      label:'Tweets',
+      data:[{{ positive }},{{ negative }},{{ neutral }}],
+      backgroundColor:['rgba(62,207,142,0.65)','rgba(255,94,126,0.65)','rgba(83,88,120,0.65)'],
+      borderColor:['#3ecf8e','#ff5e7e','#535878'],
+      borderWidth:1,borderRadius:8,
+    }]
+  },
+  options:{
+    responsive:true,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:'rgba(30,37,64,0.4)'},ticks:{color:'#8b92b3',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(30,37,64,0.4)'},ticks:{color:'#8b92b3',font:{family:'DM Sans'},stepSize:1},beginAtZero:true}
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}
