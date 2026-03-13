@@ -1,5 +1,0 @@
-django>=4.2,<5.0
-textblob>=0.17.1
-nltk>=3.8.1
-gunicorn
-whitenoise
